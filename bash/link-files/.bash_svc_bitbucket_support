@@ -16,12 +16,16 @@ function bb_template() {
     fi
     GIT_CHANGES=$(git log -1 --pretty=%B)
     TEMPLATE_FILE=$BB_TEMPLATE_DIR/bitbucket-pullrequest-description.md
-    echo "Creating template for ticket '$TICKET' from $TEMPLATE_FILE"
-    OUTPUT=$(sed -e "s!{|JIRA_ID|}!$TICKET!g;s!{|GIT_COMMIT_MESSAGE_FORMAT_GUIDELINES_URL|}!$GIT_COMMIT_MESSAGE_FORMAT_GUIDELINES_URL!g;s!{|GIT_CHANGES|}!$GIT_CHANGES!g" $TEMPLATE_FILE)
-    echo ""
-    echo "$OUTPUT"
-    echo "$OUTPUT" | copy_to_clipboard
-    echo "Copied to clipboard"
+    if [[ ! -f $TEMPLATE_FILE ]]; then
+        echo "No template file found at $TEMPLATE_FILE, nothing to do..."
+    else 
+        echo "Creating template for ticket '$TICKET' from $TEMPLATE_FILE"
+        OUTPUT=$(sed -e "s!{|JIRA_ID|}!$TICKET!g;s!{|GIT_COMMIT_MESSAGE_FORMAT_GUIDELINES_URL|}!$GIT_COMMIT_MESSAGE_FORMAT_GUIDELINES_URL!g;s!{|GIT_CHANGES|}!$GIT_CHANGES!g" $TEMPLATE_FILE)
+        echo ""
+        echo "$OUTPUT"
+        echo "$OUTPUT" | copy_to_clipboard
+        echo "Copied to clipboard"
+    fi
 }
 
 function jira_template() {
