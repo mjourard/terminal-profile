@@ -1,0 +1,19 @@
+[user]
+	name = Matt Jourard
+[color]
+	ui = always
+[pull]
+	rebase = true
+[core]
+	editor = nano
+[alias]
+	g = grep --color -I -n
+	s = status
+	d = diff
+	c = commit
+	alias = ! git config --get-regexp ^alias\\. | sed -e s/^alias\\.// -e s/\\ /\\ =\\ /
+	commitlast = !git commit -c HEAD --reset-author
+[diff]
+	tool = vscode
+[difftool "vscode"]
+	cmd = code --wait --diff $LOCAL $REMOTE

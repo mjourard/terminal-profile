@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+export GO_VERSION="go-1.17"
+export GOROOT="/usr/lib/$GO_VERSION/"
+export GOPATH="$HOME/go"
+export PATH=${GOPATH}/bin:${PATH}
+export PATH="$PATH:/usr/lib/$GO_VERSION/bin"
+export PATH="$PATH:$HOME/grcp-protobuf/bin"
+
+
+# for the aws cli
+export AWS_SDK_LOAD_CONFIG=1

@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+export PATH="${PATH}:${HOME}/aws-cli"
+export PATH=${HOME}/aws-cli/aws_completer:$PATH
+export AWS_PROFILE_CONFIG_DIR=$BASH_CONFIG_FILES_DIR
+
+
+####
+# Environment Value Updating
+####
+
+function set_aws_region {
+  PS3="Enter a number: "
+  select region in us-east-1 us-east-2 ca-central-1 exit
+  do
+      echo "Selected profile: $region"
+      case $region in
+          ca-central-1)
+          echo "export AWS_REGION=$region"
+                export AWS_REGION=$region
+          echo "export AWS_DEFAULT_REGION=$region"
+                export AWS_DEFAULT_REGION=$region
+
+                break
+              ;;
+          us-east-1)
+          echo "export AWS_REGION=$region"
+                export AWS_REGION=$region
+          echo "export AWS_DEFAULT_REGION=$region"
+                export AWS_DEFAULT_REGION=$region
+
+            break
+              ;;
+          us-east-2)
+          echo "export AWS_REGION=$region"
+                export AWS_REGION=$region
+          echo "export AWS_DEFAULT_REGION=$region"
+                export AWS_DEFAULT_REGION=$region
+
+              break
+              ;;
+          exit)
+              break
+              ;;
+          *)
+              echo "Please choose the right number"
+              ;;
+      esac
+  done
+}
+
+function set_aws_profile {
+    PS3="Enter a number: "
+    AWS_PROFILE_FILE=$AWS_PROFILE_CONFIG_DIR/aws_profiles.json
+    mapfile -t AWS_PROFILES <<< $(jq -c '.[]' $AWS_PROFILE_FILE)
+    mapfile -t AWS_PROFILE_NAMES <<< $(jq -r 'keys | .[]' $AWS_PROFILE_FILE)
+    select profile in ${AWS_PROFILE_NAMES[@]} exit
+    do
+        echo "Selected profile: $profile"
+        if [[ $profile == "exit" ]]; then
+            echo "exiting..."
+            break
+        elif [[ ! -z $profile ]]; then
+            export AWS_PROFILE=$(jq -r ".$profile" $AWS_PROFILE_FILE)
+            echo "called 'export AWS_PROFILE=$AWS_PROFILE'"
+            break
+        else
+            echo "invalid number selected, try again"
+        fi
+    done
+    
+}

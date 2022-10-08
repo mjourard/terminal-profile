@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# export JAVA_HOME="/Library/Java/JavaVirtualMachines/amazon-corretto-8.jdk/Contents/Home"
+export ECLIPSE_HOME=${HOME}/eclipse
+# maven variables
+export JAVA_HOME=/usr/lib/jvm/default-java
+export M2_HOME=/opt/maven
+export MAVEN_HOME=/opt/maven
+export PATH="$PATH:${M2_HOME}/bin"

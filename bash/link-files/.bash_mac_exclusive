@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# For exports, aliases and functions that would be exclusive functionality on a mac, e.g. brew stuff
+if [[ "$OSTYPE" == "darwin"* ]]; then  
+    export BREW_BIN=${HOME}/brew/bin
+    export PATH=${BREW_BIN}:${PATH}
+    export PATH=“${BREW_BIN}/git/bin:${PATH}”
+    export PATH="/Applications/Visual\ Studio\ Code.app/Contents/Resources/app/bin/":${PATH}
+    gitCompletion='/Library/Developer/CommandLineTools/usr/share/git-core/git-completion.bash'
+    if [ -f ${gitCompletion} ]; then
+        source $gitCompletion
+    fi
+fi

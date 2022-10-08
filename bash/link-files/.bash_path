@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+#path exports
+export PATH="$HOME/bin":${PATH}
+export PATH="$PATH:$HOME/.local/bin"
+export PATH="$PATH:$HOME/.composer/vendor/bin/"
+export PATH="$PATH:$HOME/.gem/ruby/2.5.0/bin/"
+export PATH="$PATH:$HOME/.symfony/bin"
+export PATH="$PATH:$HOME/.githubcli/bin"

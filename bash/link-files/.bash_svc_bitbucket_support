@@ -1,0 +1,49 @@
+#!/bin/bash
+#
+## functions for dealing with bitbucket workflows easier
+#
+export BB_TEMPLATE_DIR=$BASH_TEMPLATE_FILES_DIR
+
+function bb_template() {
+    TICKET=$1
+    if [[ -z $TICKET ]]; then
+        echo "No Ticket # detected! Usage: bbtemplate JIRA-555 to write a PR description for jira ticket JIRA-555."
+        TICKET="<NO_TICKET>"
+    fi
+    if [[ -z $GIT_COMMIT_MESSAGE_FORMAT_GUIDELINES_URL ]]; then
+        echo "No GIT_COMMIT_MESSAGE_FORMAT_GUIDELINES_URL env variable detected. Link will be broken in the template."
+        GIT_COMMIT_MESSAGE_FORMAT_GUIDELINES_URL=""
+    fi
+    GIT_CHANGES=$(git log -1 --pretty=%B)
+    TEMPLATE_FILE=$BB_TEMPLATE_DIR/bitbucket-pullrequest-description.md
+    echo "Creating template for ticket '$TICKET' from $TEMPLATE_FILE"
+    OUTPUT=$(sed -e "s!{|JIRA_ID|}!$TICKET!g;s!{|GIT_COMMIT_MESSAGE_FORMAT_GUIDELINES_URL|}!$GIT_COMMIT_MESSAGE_FORMAT_GUIDELINES_URL!g;s!{|GIT_CHANGES|}!$GIT_CHANGES!g" $TEMPLATE_FILE)
+    echo ""
+    echo "$OUTPUT"
+    echo "$OUTPUT" | copy_to_clipboard
+    echo "Copied to clipboard"
+}
+
+function jira_template() {
+    echo "Creating jira template"
+    TEMPLATE_FILE=$BB_TEMPLATE_DIR/jira-ticket-description.md
+    if [[ ! -f $TEMPLATE_FILE ]]; then
+        echo "No template file found at $TEMPLATE_FILE, nothing to do..."
+    else 
+
+        OUTPUT=$(cat $TEMPLATE_FILE)
+        echo "$OUTPUT"
+        echo "$OUTPUT" | copy_to_clipboard
+        echo "Copied to clipboard"
+    fi
+}
+
+function testbb() {
+    # curl https://api.bitbucket.org/2.0/workspaces \
+    # -u $BB_USERNAME:$BB_PASSWORD | jq
+
+    JIRA_ID='CHAOS-330'
+
+    BB_PR_DESCRIPTION=`sed "s/{|JIRA_ID|}/$JIRA_ID/g" $BB_TEMPLATE_DIR/bitbucket-pullrequest-description.md`
+    echo $BB_PR_DESCRIPTION
+}

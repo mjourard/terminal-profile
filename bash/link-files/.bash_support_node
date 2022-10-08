@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+# nvm - node version manager
+# https://github.com/nvm-sh/nvm
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+TARGET_NODE_VERSION=14.20.1
+if [[ $(node --version) != "v$TARGET_NODE_VERSION" ]]; then
+    echo "Setting node version to $TARGET_NODE_VERSION"
+    nvm alias default $TARGET_NODE_VERSION
+    nvm use $TARGET_NODE_VERSION
+fi
+
+export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
+export LDFLAGS="-L/Users/mjourard/brew/opt/node@10/lib"
+export CPPFLAGS="-I/Users/mjourard/brew/opt/node@10/include"
+export PATH="$PATH:$HOME/.npm-global/lib/node_modules/"
+export PATH="$HOME/.npm-global/bin:$PATH"
+
+

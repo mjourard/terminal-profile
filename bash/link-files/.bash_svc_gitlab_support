@@ -1,0 +1,163 @@
+#!/bin/bash
+#
+## functions for dealing with gitlab easier
+#
+
+
+# For creating new merge requests
+function glnewmr() {
+    if [[ $# != 2 ]]; then
+        echo "Usage: glnewmr <JIRA_TICKET_ID> <short_underscore_separated_description>"
+        echo "To set an alternative base branch, set the environment variable OVERRIDE_BASE_BRANCH"
+        echo "To override the branch name, set the environment variable OVERRIDE_BRANCH_NAME"
+        echo "Remember to follow conventions with the new branch name"
+        return 1
+    fi
+    JIRA_ID=$1
+    DESC="${2//_/-}"
+    NEW_BRANCH_NAME="$JIRA_ID-$DESC"
+    if [[ -n $OVERRIDE_BRANCH_NAME ]]; then
+        echo "Found override branch name of '$OVERRIDE_BRANCH_NAME', using that instead of $NEW_BRANCH_NAME..."
+        NEW_BRANCH_NAME=$OVERRIDE_BRANCH_NAME
+    fi
+    MR_TITLE="Draft: Resolve $NEW_BRANCH_NAME"
+    echo "Creating new gitlab merge request"
+    echo "Selecting base development branch..."
+    #TODO add an optional param that will use the current branch as the base instad of what is set for HEAD branch
+    # use git rev-parse --abbrev-ref HEAD
+    BASE_BRANCH=$(git remote show origin | grep "HEAD branch" | cut -d ":" -f 2)
+    # BASE_BRANCH="SCH-3924_spring_data_feature_branch"
+    if [[ $BASE_BRANCH == " master" ]]; then
+        echo "master branch found as the base, using develop instead"
+        BASE_BRANCH="develop"
+    fi
+    if [[ -n $OVERRIDE_BASE_BRANCH ]]; then
+        echo "Found override branch of '$OVERRIDE_BASE_BRANCH', using that instead of '$BASE_BRANCH'..."
+        BASE_BRANCH=$OVERRIDE_BASE_BRANCH
+    fi
+    echo "Using '$BASE_BRANCH' as the base. Switching to it to create the new branch..."
+    # TODO: capture when this fails and if it does, exit
+    git checkout $BASE_BRANCH
+    git pull
+
+    echo "Checking out new branch called $NEW_BRANCH_NAME"
+    git checkout -b $NEW_BRANCH_NAME
+
+    # Unable to check off the option to 'Squash commits when merge request is accepted' as no graphQL option
+    echo "Creating new git merge request for the new branch"
+    git push -u origin $NEW_BRANCH_NAME \
+    -o merge_request.create \
+    -o merge_request.force_remove_source_branch \
+    -o merge_request.remove_source_branch \
+    -o merge_request.squash \
+    -o merge_request.target_branch="$BASE_BRANCH" \
+    -o merge_request.target="$BASE_BRANCH" \
+    -o merge_request.title="$MR_TITLE" 2>&1
+    
+    echo "Making additional MR mods via graphQL"
+    PROJECT=$(git remote get-url origin | cut -d ":" -f 2 | cut -d "." -f 1)
+    echo "Using project: $PROJECT"
+    glMRGraphModifications "$PROJECT" "CHAmberOfSecrets" "$MR_TITLE" 
+}
+
+function glMRGraphModifications() {
+  if [[ $# != 3 ]]; then
+    echo "Usage: glMRGraphModifications <target_project> <label> <target_mr_title>"
+    return 1
+  fi
+  TARGET_PROJECT=$1
+  TARGET_LABEL=$2
+  TARGET_MR=$3
+
+  # get the id of the label you want to apply to the new MR
+  echo "Searching '$TARGET_PROJECT' for label '$TARGET_LABEL'"
+  LABEL_ID=$( _glGetLabelID "$TARGET_PROJECT" "$TARGET_LABEL" )
+  echo "Label id: $LABEL_ID"
+
+  echo "Searching '$TARGET_PROJECT' for target MR '$TARGET_MR'"
+  MR_IID=$( _glGetMRID "$TARGET_PROJECT" "$TARGET_MR" )
+  echo "MR IID: '$MR_IID'"
+
+  _glAddLabelToMR $TARGET_PROJECT $MR_IID $LABEL_ID
+}
+
+
+#region Gitlab supporting functions
+function _gllistmrs() {
+  if [[ $# != 1 ]]; then
+    echo "Usage: gllistmrs <target_project>"
+    return 1
+  fi
+  TARGET_PROJECT=$1
+  QUERY="query {project(fullPath: \\\"$TARGET_PROJECT\\\") { mergeRequests { edges { node { id iid title } } } } }"
+  RESP=$( _gitlabQL "$QUERY" )
+  # weird quoting is required because jq is super finicky with how it works with bash. Was very difficult to get it work with passed in parameters
+  echo $RESP | jq '.data.project.mergeRequests.edges[].node.title' 
+}
+
+#queries gitlab GraphQL to get the id of the label to assign somewhere, returning the gitlab id as a string on stdout
+function _glGetLabelID() {
+  if [[ $# != 2 ]]; then
+    echo "Usage: _glGetLabelID <target_project> <label>"
+    return 1
+  fi
+
+  TARGET_PROJECT=$1
+  TARGET_LABEL=$2
+  
+  # QUERY='query {project(fullPath: \"goods/penelope\")  { id mergeRequests { edges { node { id title } } } } }'
+  
+  QUERY="query {project(fullPath: \\\"$TARGET_PROJECT\\\")  { id label(title: \\\"$TARGET_LABEL\\\") { id title } } }"
+  RESP=$( _gitlabQL "$QUERY") 
+  echo $RESP | jq -r '.data.project.label.id'
+}
+
+# Gets the latest Merge Request ID matching an MR title
+function _glGetMRID() {
+  if [[ $# != 2 ]]; then
+    echo "Usage: _glGetMRID <target_project> <mr_title>"
+    return 1
+  fi
+
+  TARGET_PROJECT=$1
+  TARGET_MR=$2
+
+  QUERY="query {project(fullPath: \\\"$TARGET_PROJECT\\\") { mergeRequests { edges { node { id iid title } } } } }"
+  RESP=$( _gitlabQL "$QUERY" )
+  # weird quoting is required because jq is super finicky with how it works with bash. Was very difficult to get it work with passed in parameters
+  echo $RESP  | jq -r '.data.project.mergeRequests.edges[] | select(.node.title=="'"$TARGET_MR"'")' | jq -sr '. | sort_by(.node.iid) | reverse | .[0].node.iid'
+}
+
+function _glAddLabelToMR() {
+  if [[ $# != 3 ]]; then
+    echo "Usage: _glAddLabelToMR <target_project> <TARGET_MR_ID> <TARGET_LABEL_ID: $#"
+    return 1
+  fi
+
+  TARGET_PROJECT=$1
+  TARGET_MR=$2
+  TARGET_LABEL=$3
+
+  QUERY="mutation {mergeRequestSetLabels(input: { projectPath: \\\"$TARGET_PROJECT\\\", iid: \\\"$TARGET_MR\\\", labelIds: [\\\"$TARGET_LABEL\\\"], operationMode: APPEND }) { mergeRequest { title, labels { nodes { title } } } errors } }"
+  echo "add label: $QUERY"
+  RESP=$( _gitlabQL "$QUERY" ) 
+  echo $RESP | jq '.'
+}
+
+function _gitlabQL() {
+  if [[ $# != 1 ]]; then
+    echo "Usage: _gitlabQL <query>"
+    return 1
+  fi
+
+  # trying things on https://gitlab.com/-/graphql-explorer
+
+  GRAPHQL_TOKEN=$GITLAB_ACCESS_TOKEN
+  QUERY=$1
+  
+  ### GRAB THE TARGET MR - todo: use jq to search by title ###
+  data="{\"query\": \"$QUERY\"}"
+  curl -s  "$GITLAB_API_GRAPHQL_URL" -k --header "Authorization: Bearer $GRAPHQL_TOKEN" --header "Content-Type: application/json" --request POST --data "$data"
+  return 0
+}
+#endregion
